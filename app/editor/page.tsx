@@ -14,7 +14,8 @@ import {
   Trash2, Send, Camera
 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
 const ACCENT_PRESETS = [
   '#818cf8','#a78bfa','#f472b6','#34d399','#fbbf24',
@@ -33,13 +34,14 @@ function extractYtId(url: string) {
   return m ? m[1] : null;
 }
 
-export default function EditorPage() {
+function EditorInner() {
   const { user, loading: authLoading } = useAuth();
   const { profile, loading: profileLoading, update: save } = useProfile(user);
   const { links, addLink, deleteLink } = useSiteLinks(profile?.id);
   const { videos, addVideo, deleteVideo } = useSiteVideos(profile?.id);
   const { posts: rawPosts, addPost } = useFeedPosts(profile?.id);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [siteName, setSiteName] = useState('');
   const [bio, setBio]           = useState('');
@@ -75,7 +77,7 @@ export default function EditorPage() {
   const [ytTitle, setYtTitle]   = useState('');
   const [pwOn, setPwOn]         = useState(false);
   const [pwAmt, setPwAmt]       = useState('4.99');
-  const [tab, setTab]           = useState('profile');
+  const [tab, setTab]           = useState(() => searchParams?.get('tab') || 'profile');
   const [saving, setSaving]     = useState(false);
   const [savedOk, setSavedOk]   = useState(false);
   const [upA, setUpA]           = useState(false);
@@ -606,4 +608,8 @@ export default function EditorPage() {
       </div>
     </div>
   );
+}
+
+export default function EditorPage() {
+  return <Suspense><EditorInner /></Suspense>;
 }

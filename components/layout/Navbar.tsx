@@ -20,8 +20,6 @@ export function Navbar() {
   const navLinks = [
     { href: '/slugs', label: t.slugs },
     { href: '/sites', label: t.sites },
-    { href: '/videos', label: t.videos },
-    { href: '/cv', label: t.cvs },
     { href: '/jackpot', label: t.jackpot },
   ];
 
@@ -92,14 +90,14 @@ export function Navbar() {
             </button>
 
             {user ? (
-              <Link href="/dashboard" style={{
+              <Link href="/editor" style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '7px 14px', borderRadius: 8,
                 background: 'rgba(255,255,255,0.06)', border: '0.5px solid rgba(255,255,255,0.1)',
                 color: '#f1f5f9', textDecoration: 'none', fontSize: 13, fontWeight: 600,
               }}>
                 <User size={13} />
-                {user.email?.split('@')[0]}
+                Editor
               </Link>
             ) : (
               <Link href="/login" style={{
