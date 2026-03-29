@@ -20,8 +20,19 @@ export function VaultClient() {
   const [mode, setMode] = useState<Record<string, string>>({});
   const [prices, setPrices] = useState<Record<string, string>>({});
   const [toast, setToast] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [bulkSlugs, setBulkSlugs] = useState('');
+  const [bulkRegistering, setBulkRegistering] = useState(false);
+  const [bulkResults, setBulkResults] = useState<string[]>([]);
+  const [showBulk, setShowBulk] = useState(false);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
+
+  useEffect(() => {
+    if (!user) return;
+    (supabase as any).from('user_roles').select('role').eq('user_id', user.id).eq('role', 'admin').maybeSingle()
+      .then(({ data }: any) => setIsAdmin(!!data));
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -87,6 +98,39 @@ export function VaultClient() {
             <Plus size={15} /> Get more slugs
           </Link>
         </div>
+
+        {/* Admin: Bulk register */}
+        {isAdmin && (
+          <div style={{ marginBottom:16 }}>
+            <button onClick={() => setShowBulk(b => !b)} style={{
+              padding:'8px 16px', borderRadius:8, border:`0.5px solid ${A}30`,
+              background:`${A}10`, color:A, cursor:'pointer', fontSize:12, fontWeight:700,
+              marginBottom:8,
+            }}>
+              📋 {showBulk ? 'Hide' : 'Bulk Register (Admin)'}
+            </button>
+            {showBulk && (
+              <div style={{ padding:16, borderRadius:14, background:'rgba(129,140,248,0.06)', border:`0.5px solid ${A}20` }}>
+                <p style={{ fontSize:11, color:'rgba(241,245,249,0.5)', marginBottom:8 }}>One slug per line or comma separated</p>
+                <textarea value={bulkSlugs} onChange={e => setBulkSlugs(e.target.value)}
+                  style={{ width:'100%', minHeight:80, padding:'10px 12px', borderRadius:10, border:'0.5px solid rgba(255,255,255,0.12)', background:'white', color:'#111827', fontSize:13, fontFamily:"'JetBrains Mono',monospace", outline:'none', resize:'vertical', boxSizing:'border-box' as const, marginBottom:10 }}
+                  placeholder={"ceo\ndev\ntech\nai"} />
+                <button onClick={registerBulk} disabled={bulkRegistering || !bulkSlugs.trim()} style={{
+                  padding:'10px 20px', borderRadius:10, border:'none', background:A,
+                  color:'#fff', fontWeight:700, fontSize:13, cursor:'pointer', marginBottom:8,
+                  opacity:!bulkSlugs.trim()?0.5:1,
+                }}>
+                  {bulkRegistering ? '⏳ Registering...' : `📋 Register ${bulkSlugs.split(/[\n,]/).filter((s:string)=>s.trim()).length} slugs FREE`}
+                </button>
+                {bulkResults.length > 0 && (
+                  <div style={{ maxHeight:120, overflowY:'auto' }}>
+                    {bulkResults.map((r, i) => <p key={i} style={{ fontSize:11, fontFamily:'monospace', color:'rgba(241,245,249,0.7)', margin:'2px 0' }}>{r}</p>)}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {siteSlug && (
           <div style={{ padding: '14px 18px', borderRadius: 12, background: 'rgba(74,222,128,0.06)', border: '0.5px solid rgba(74,222,128,0.2)', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 10 }}>

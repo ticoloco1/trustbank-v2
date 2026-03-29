@@ -90,6 +90,20 @@ export default function MiniSiteClient({ profile }: { profile: any }) {
 
   const t = getTheme(profile);
   const isOwner = user?.id === profile.user_id;
+  const [newPostText, setNewPostText] = useState('');
+  const [postingFeed, setPostingFeed] = useState(false);
+
+  const submitPost = async () => {
+    if (!newPostText.trim() || !profile?.id) return;
+    setPostingFeed(true);
+    const expires = new Date(Date.now() + 7*86400000).toISOString();
+    const { data } = await supabase.from('feed_posts').insert({
+      site_id: profile.id, text: newPostText, pinned: false, expires_at: expires,
+    }).select().single();
+    if (data) setPosts((prev: any[]) => [data, ...prev]);
+    setNewPostText('');
+    setPostingFeed(false);
+  };
 
   // Parse pages
   const pages: {id:string;label:string}[] = (() => {
@@ -285,12 +299,23 @@ export default function MiniSiteClient({ profile }: { profile: any }) {
               </div>
             )}
 
-            {/* New post (owner only) */}
+            {/* Feed composer for owner */}
             {isOwner && profile.show_feed !== false && (
-              <div style={{ marginTop: 16, padding: '12px 14px', borderRadius: 12, background: `${t.accent}08`, border: `0.5px solid ${t.accent}20`, textAlign: 'center' }}>
-                <a href="/dashboard" style={{ fontSize: 13, color: t.accent, fontWeight: 700, textDecoration: 'none' }}>
-                  ✍️ Post to your feed →
-                </a>
+              <div style={{ marginTop: 12, padding: 14, borderRadius: 14, background: t.surface, border: `0.5px solid ${t.border}` }}>
+                <textarea value={newPostText} onChange={e => setNewPostText(e.target.value)}
+                  placeholder="Write a post..."
+                  style={{ width:'100%', background:'transparent', border:'none', outline:'none', color:t.text, fontSize:13, lineHeight:1.6, resize:'none', fontFamily:'inherit', minHeight:60, boxSizing:'border-box' as const }}
+                />
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:8 }}>
+                  <span style={{ fontSize:11, color:t.muted }}>7 days · PIN for $10 USDC</span>
+                  <button onClick={submitPost} disabled={!newPostText.trim() || postingFeed} style={{
+                    padding:'7px 16px', borderRadius:8, border:'none',
+                    background:newPostText.trim()?t.accent:'rgba(255,255,255,0.1)',
+                    color:'#fff', fontWeight:700, fontSize:12, cursor:'pointer',
+                  }}>
+                    {postingFeed ? '...' : 'Publish'}
+                  </button>
+                </div>
               </div>
             )}
           </>

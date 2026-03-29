@@ -724,7 +724,7 @@ export default function Dashboard() {
             <div>
               <GCard>
                 <p style={{ fontSize:14, fontWeight:600, color:'#111827', marginBottom:16 }}>Account</p>
-                {[{ l:'Email', v:user.email||'' },{ l:'Slug', v:`trustbank.com/${profile?.slug||''}` },{ l:'Plan', v:'Starter' },{ l:'Platform', v:'TrustBank' }].map(f => (
+                {[{ l:'Email', v:user.email||'' },{ l:'Slug', v:`${profile?.slug||''}.trustbank.xyz` },{ l:'Plan', v:'Starter' },{ l:'Platform', v:'TrustBank' }].map(f => (
                   <div key={f.l} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', borderBottom:'1px solid #e5e7eb' }}>
                     <span style={{ fontSize:13, color:'#6b7280' }}>{f.l}</span>
                     <span style={{ fontSize:13, color:'#111827', fontFamily:'monospace' }}>{f.v}</span>

@@ -48,8 +48,8 @@ export function useProfile(user: User | null) {
   const uploadPhoto = async (file: File, type: 'avatar' | 'banner') => {
     if (!profile) return null;
     const ext = file.name.split('.').pop();
-    const path = `${profile.id}/${type}.${ext}`;
-    const bucket = type === 'avatar' ? 'avatars' : 'banners';
+    const path = `${profile.id}/${type}/${Date.now()}.${ext}`;
+    const bucket = 'platform-assets';
     const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert:true });
     if (error) return null;
     const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(path);

@@ -1,22 +1,30 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
 import MiniSiteClient from './MiniSiteClient';
 import { Loader2 } from 'lucide-react';
 
 export function MiniSitePage({ slug }: { slug: string }) {
+  const { user } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    supabase.from('mini_sites').select('*').eq('slug', slug).eq('published', true).maybeSingle()
+    // Allow owner to preview even if unpublished
+    supabase.from('mini_sites').select('*').eq('slug', slug).maybeSingle()
       .then(({ data }) => {
-        if (data) setProfile(data);
-        else setNotFound(true);
+        if (data && (data.published || data.user_id === user?.id)) {
+          setProfile(data);
+        } else if (data) {
+          setNotFound(true); // exists but not published and not owner
+        } else {
+          setNotFound(true);
+        }
         setLoading(false);
       });
-  }, [slug]);
+  }, [slug, user?.id]);
 
   if (loading) return (
     <div style={{ minHeight: '100vh', background: '#0a0a0f', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
