@@ -57,6 +57,9 @@ const TABS = [
   { id:'registered', label:'🔍 Registrados' },
   { id:'auctions', label:'⚡ Leilões' },
   { id:'sites', label:'🌐 Sites' },
+  { id:'plans', label:'💳 Planos' },
+  { id:'broadcast', label:'📢 Broadcast' },
+  { id:'inbox', label:'📬 Inbox' },
   { id:'settings', label:'⚙️ Config' },
 ];
 
@@ -65,6 +68,12 @@ export function AdminClient() {
   const isAdmin = !!user && ADMIN_EMAILS.includes(user.email || '');
 
   const [tab, setTab] = useState('analytics');
+  const [plans, setPlans] = useState<any[]>([]);
+  const [editPlan, setEditPlan] = useState<any>(null);
+  const [bcTitle, setBcTitle] = useState('');
+  const [bcBody, setBcBody] = useState('');
+  const [bcMessages, setBcMessages] = useState<any[]>([]);
+  const [inboxMessages, setInboxMessages] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{msg:string;ok:boolean}|null>(null);
   const showToast = (msg:string, ok=true) => { setToast({msg,ok}); setTimeout(()=>setToast(null),4000); };
@@ -114,17 +123,27 @@ export function AdminClient() {
     else if (tab === 'marketplace') loadMarket();
     else if (tab === 'auctions') loadAuctions();
     else if (tab === 'sites') loadSites();
+    else if (tab === 'plans') loadPlans();
+    else if (tab === 'broadcast') loadBroadcast();
+    else if (tab === 'inbox') loadInbox();
   }, [tab, isAdmin]);
 
   const loadAnalytics = async () => {
     setLoading(true);
-    const [a,b,c,d] = await Promise.all([
+    const [a,b,cc,d,e] = await Promise.all([
       supabase.from('mini_sites').select('*',{count:'exact',head:true}),
       (supabase as any).from('slug_registrations').select('*',{count:'exact',head:true}),
       (supabase as any).from('premium_slugs').select('*',{count:'exact',head:true}).eq('active',true),
       supabase.from('feed_posts').select('*',{count:'exact',head:true}),
+      (supabase as any).from('site_visits').select('*',{count:'exact',head:true}),
     ]);
-    setStats({ sites:a.count||0, regs:b.count||0, market:c.count||0, posts:d.count||0 });
+    // Top visited sites
+    const { data: topSites } = await (supabase as any)
+      .from('site_visits').select('slug').order('created_at',{ascending:false}).limit(200);
+    const counts: Record<string,number> = {};
+    (topSites||[]).forEach((v:any)=>{ counts[v.slug]=(counts[v.slug]||0)+1; });
+    const topList = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    setStats({ sites:a.count||0, regs:b.count||0, market:cc.count||0, posts:d.count||0, visits:e.count||0, topSites:topList });
     setLoading(false);
   };
 
@@ -261,6 +280,51 @@ export function AdminClient() {
     else showToast(error.message,false);
   };
 
+  const loadPlans = async () => {
+    const { data } = await (supabase as any).from('platform_plans').select('*').order('sort_order');
+    setPlans(data || []);
+  };
+
+  const savePlan = async (plan: any) => {
+    if (plan.id) {
+      await (supabase as any).from('platform_plans').update(plan).eq('id', plan.id);
+    } else {
+      await (supabase as any).from('platform_plans').insert(plan);
+    }
+    setEditPlan(null);
+    loadPlans();
+    showToast('✅ Plano salvo');
+  };
+
+  const deletePlan = async (id: string) => {
+    if (!confirm('Deletar plano?')) return;
+    await (supabase as any).from('platform_plans').delete().eq('id', id);
+    loadPlans();
+    showToast('Deletado');
+  };
+
+  const loadBroadcast = async () => {
+    const { data } = await (supabase as any).from('broadcast_messages').select('*').order('created_at', { ascending: false }).limit(20);
+    setBcMessages(data || []);
+  };
+
+  const sendBroadcast = async () => {
+    if (!bcTitle || !bcBody) return;
+    await (supabase as any).from('broadcast_messages').insert({ title: bcTitle, body: bcBody, target: 'all', sent_at: new Date().toISOString() });
+    setBcTitle(''); setBcBody('');
+    loadBroadcast();
+    showToast('✅ Mensagem enviada');
+  };
+
+  const loadInbox = async () => {
+    setLoading(true);
+    const { data } = await (supabase as any).from('site_messages')
+      .select('*, mini_sites(slug,site_name)')
+      .order('created_at', { ascending: false }).limit(100);
+    setInboxMessages(data || []);
+    setLoading(false);
+  };
+
   // ── Guard ────────────────────────────────────────────────────
   if (!isAdmin) return (
     <div style={{ minHeight:'100vh', background:'#0d1117', fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif" }}>
@@ -321,7 +385,21 @@ export function AdminClient() {
                   <Stat label="Slugs Registrados" value={stats.regs} color="#f59e0b"/>
                   <Stat label="No Marketplace" value={stats.market} color="#10b981"/>
                   <Stat label="Feed Posts" value={stats.posts} color="#f43f5e"/>
+                  <Stat label="Visitas Totais" value={stats.visits} color="#06b6d4"/>
                 </div>
+                {stats.topSites?.length > 0 && (
+                  <Card style={{ marginBottom:12 }}>
+                    <p style={{ fontSize:13, fontWeight:700, color:'#f1f5f9', marginBottom:12 }}>📊 Sites mais visitados</p>
+                    {stats.topSites.map(([slug, count]: [string, number], i: number) => (
+                      <div key={slug} style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 0', borderBottom:'0.5px solid rgba(255,255,255,0.06)' }}>
+                        <span style={{ fontSize:12, color:'rgba(241,245,249,0.4)', width:20, textAlign:'right' }}>{i+1}</span>
+                        <span style={{ fontFamily:'monospace', fontSize:13, color:'#f1f5f9', flex:1 }}>{slug}.trustbank.xyz</span>
+                        <span style={{ fontSize:13, fontWeight:700, color:'#06b6d4' }}>{count} visitas</span>
+                        <a href={`/s/${slug}`} target="_blank" style={{ fontSize:11, color:A, textDecoration:'none' }}>Ver →</a>
+                      </div>
+                    ))}
+                  </Card>
+                )}
                 <Card>
                   <p style={{ fontSize:13, fontWeight:700, color:'#f1f5f9', marginBottom:12 }}>Ações rápidas</p>
                   <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
@@ -657,6 +735,134 @@ export function AdminClient() {
                   <Link href={`/s/${s.slug}`} target="_blank" style={{ fontSize:11,color:A,textDecoration:'none' }}>Ver site →</Link>
                 </Card>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── PLANS ── */}
+        {tab==='plans' && (
+          <div>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+              <p style={{ fontSize:16, fontWeight:800, color:'#f1f5f9', margin:0 }}>💳 Planos e Preços</p>
+              <Btn onClick={()=>setEditPlan({ name:'', slug:'', price_monthly:0, price_yearly:0, color:'#818cf8', emoji:'✨', features:[], active:true, is_free:false, sort_order:plans.length })}>
+                <Plus size={13}/> Novo Plano
+              </Btn>
+            </div>
+
+            {editPlan && (
+              <Card style={{ marginBottom:16, border:`0.5px solid ${A}40` }}>
+                <p style={{ fontSize:13, fontWeight:800, color:'#f1f5f9', marginBottom:14 }}>
+                  {editPlan.id ? 'Editar Plano' : 'Novo Plano'}
+                </p>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, marginBottom:10 }}>
+                  <div><Label>Nome</Label><input value={editPlan.name||''} onChange={e=>setEditPlan((p:any)=>({...p,name:e.target.value}))} style={{ ...inp, width:'100%' }} placeholder="Pro"/></div>
+                  <div><Label>Preço/mês (USD)</Label><input value={editPlan.price_monthly||''} onChange={e=>setEditPlan((p:any)=>({...p,price_monthly:parseFloat(e.target.value)||0}))} type="number" style={{ ...inp, width:'100%' }}/></div>
+                  <div><Label>Preço/ano (USD)</Label><input value={editPlan.price_yearly||''} onChange={e=>setEditPlan((p:any)=>({...p,price_yearly:parseFloat(e.target.value)||0}))} type="number" style={{ ...inp, width:'100%' }}/></div>
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, marginBottom:10 }}>
+                  <div><Label>Cor (hex)</Label><div style={{ display:'flex', gap:6 }}><input value={editPlan.color||''} onChange={e=>setEditPlan((p:any)=>({...p,color:e.target.value}))} style={{ ...inp, flex:1 }} placeholder="#818cf8"/><input type="color" value={editPlan.color||'#818cf8'} onChange={e=>setEditPlan((p:any)=>({...p,color:e.target.value}))} style={{ width:40, height:36, borderRadius:8, border:'none', cursor:'pointer', padding:0 }}/></div></div>
+                  <div><Label>Emoji</Label><input value={editPlan.emoji||''} onChange={e=>setEditPlan((p:any)=>({...p,emoji:e.target.value}))} style={{ ...inp, width:'100%' }} placeholder="⚡"/></div>
+                  <div><Label>Ordem</Label><input value={editPlan.sort_order||0} onChange={e=>setEditPlan((p:any)=>({...p,sort_order:parseInt(e.target.value)||0}))} type="number" style={{ ...inp, width:'100%' }}/></div>
+                </div>
+                <Label>Features (uma por linha)</Label>
+                <textarea
+                  value={Array.isArray(editPlan.features)?editPlan.features.join('\n'):(editPlan.features||'')}
+                  onChange={e=>setEditPlan((p:any)=>({...p,features:e.target.value.split('\n').filter((x:string)=>x.trim())}))}
+                  style={{ ...inp, width:'100%', minHeight:100, resize:'vertical', fontFamily:'inherit', marginBottom:12 }}
+                  placeholder={"Unlimited links\n3 site pages\nVideo paywall"}
+                />
+                <div style={{ display:'flex', gap:8 }}>
+                  <Btn onClick={()=>savePlan(editPlan)}><Check size={13}/> Salvar</Btn>
+                  <Btn ghost onClick={()=>setEditPlan(null)}><X size={13}/> Cancelar</Btn>
+                </div>
+              </Card>
+            )}
+
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))', gap:12 }}>
+              {plans.map(plan=>(
+                <Card key={plan.id} style={{ border:`0.5px solid ${plan.color||A}30` }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12 }}>
+                    <div>
+                      <span style={{ fontSize:20 }}>{plan.emoji}</span>
+                      <p style={{ fontSize:16, fontWeight:900, color:plan.color||A, margin:'4px 0 2px' }}>{plan.name}</p>
+                      <p style={{ fontSize:22, fontWeight:900, color:'#f1f5f9', margin:0 }}>
+                        ${plan.price_monthly}<span style={{ fontSize:13, color:'rgba(241,245,249,0.4)', fontWeight:400 }}>/mês</span>
+                      </p>
+                      {plan.price_yearly>0&&<p style={{ fontSize:12, color:'#4ade80', margin:'2px 0 0' }}>${plan.price_yearly}/ano</p>}
+                    </div>
+                    <span style={{ padding:'3px 10px', borderRadius:100, background:plan.active?'rgba(74,222,128,0.1)':'rgba(239,68,68,0.1)', color:plan.active?'#4ade80':'#ef4444', fontSize:10, fontWeight:700 }}>
+                      {plan.active?'Ativo':'Off'}
+                    </span>
+                  </div>
+                  {Array.isArray(plan.features)&&plan.features.slice(0,4).map((f:string,i:number)=>(
+                    <p key={i} style={{ fontSize:12, color:'rgba(241,245,249,0.6)', margin:'0 0 4px', display:'flex', gap:6 }}>
+                      <span style={{ color:'#4ade80' }}>✓</span> {f}
+                    </p>
+                  ))}
+                  <div style={{ display:'flex', gap:6, marginTop:12 }}>
+                    <Btn sm onClick={()=>setEditPlan({...plan, features:Array.isArray(plan.features)?plan.features:[]})}><Edit2 size={11}/> Editar</Btn>
+                    <Btn sm ghost onClick={()=>{(supabase as any).from('platform_plans').update({active:!plan.active}).eq('id',plan.id).then(()=>loadPlans());}}>
+                      {plan.active?'Desativar':'Ativar'}
+                    </Btn>
+                    <Btn sm danger onClick={()=>deletePlan(plan.id)}><Trash2 size={11}/></Btn>
+                  </div>
+                </Card>
+              ))}
+              {plans.length===0&&<p style={{ color:'rgba(241,245,249,0.3)', fontSize:13 }}>Nenhum plano. Clique "Novo Plano" para criar.</p>}
+            </div>
+          </div>
+        )}
+
+        {/* ── BROADCAST ── */}
+        {tab==='broadcast' && (
+          <div style={{ maxWidth:700 }}>
+            <Card style={{ marginBottom:16 }}>
+              <p style={{ fontSize:15, fontWeight:800, color:'#f1f5f9', marginBottom:16 }}>📢 Broadcast</p>
+              <Label>Título</Label>
+              <input value={bcTitle} onChange={e=>setBcTitle(e.target.value)} style={{ ...inp, width:'100%', marginBottom:10 }} placeholder="Novidade importante!"/>
+              <Label>Mensagem</Label>
+              <textarea value={bcBody} onChange={e=>setBcBody(e.target.value)} style={{ ...inp, width:'100%', minHeight:100, resize:'vertical', fontFamily:'inherit', marginBottom:12 }} placeholder="Escreva sua mensagem para todos os usuários…"/>
+              <Btn onClick={sendBroadcast} disabled={!bcTitle||!bcBody}><Send size={13}/> Enviar para todos</Btn>
+            </Card>
+            <Card>
+              <p style={{ fontSize:13, fontWeight:700, color:'#f1f5f9', marginBottom:12 }}>Mensagens enviadas</p>
+              {bcMessages.map(m=>(
+                <div key={m.id} style={{ padding:'12px 14px', borderRadius:10, background:'rgba(255,255,255,0.03)', border:'0.5px solid rgba(255,255,255,0.07)', marginBottom:8 }}>
+                  <p style={{ fontSize:13, fontWeight:700, color:'#f1f5f9', margin:'0 0 4px' }}>{m.title}</p>
+                  <p style={{ fontSize:12, color:'rgba(241,245,249,0.6)', margin:'0 0 6px' }}>{m.body}</p>
+                  <p style={{ fontSize:10, color:'rgba(241,245,249,0.3)', margin:0 }}>{new Date(m.sent_at||m.created_at).toLocaleString('pt-BR')} · {m.target}</p>
+                </div>
+              ))}
+              {bcMessages.length===0&&<p style={{ color:'rgba(241,245,249,0.3)', fontSize:13 }}>Nenhuma mensagem enviada.</p>}
+            </Card>
+          </div>
+        )}
+
+        {/* ── INBOX ── */}
+        {tab==='inbox' && (
+          <div>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+              <p style={{ fontSize:15, fontWeight:800, color:'#f1f5f9', margin:0 }}>📬 Mensagens recebidas</p>
+              <Btn ghost onClick={loadInbox}><RefreshCw size={13}/></Btn>
+            </div>
+            {loading && <div style={{textAlign:'center',padding:30}}><Loader2 size={24} color={A} className="animate-spin"/></div>}
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              {inboxMessages.map(m => (
+                <Card key={m.id} style={{ padding:'14px 18px' }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}>
+                    <div>
+                      <span style={{ fontSize:13, fontWeight:700, color:'#f1f5f9' }}>{m.sender_name||'Anônimo'}</span>
+                      {m.sender_email && <span style={{ fontSize:11, color:'rgba(241,245,249,0.4)', marginLeft:8 }}>{m.sender_email}</span>}
+                    </div>
+                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                      <span style={{ fontSize:10, color:'rgba(241,245,249,0.3)', fontFamily:'monospace' }}>{m.mini_sites?.slug}.trustbank.xyz</span>
+                      <span style={{ fontSize:10, color:'rgba(241,245,249,0.3)' }}>{new Date(m.created_at).toLocaleDateString('pt-BR')}</span>
+                    </div>
+                  </div>
+                  <p style={{ fontSize:13, color:'rgba(241,245,249,0.8)', margin:0, lineHeight:1.6 }}>{m.message}</p>
+                </Card>
+              ))}
+              {inboxMessages.length===0&&!loading&&<p style={{ textAlign:'center', padding:'40px 0', color:'rgba(241,245,249,0.3)', fontSize:13 }}>Nenhuma mensagem ainda</p>}
             </div>
           </div>
         )}

@@ -356,7 +356,20 @@ export default function EditorPage() {
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
                   <div>
                     <label style={lbl}>Carteira Polygon</label>
-                    <input value={wallet} onChange={e=>{setWallet(e.target.value);dirty.current=true;}} style={{...inp,fontFamily:"'JetBrains Mono',monospace"}} placeholder="0x…"/>
+                    <div style={{ display:'flex', gap:6 }}>
+                      <input value={wallet} onChange={e=>{setWallet(e.target.value);dirty.current=true;}} style={{...inp,flex:1,fontFamily:"'JetBrains Mono',monospace"}} placeholder="0x…"/>
+                      <button onClick={async()=>{
+                        if (typeof window !== 'undefined' && (window as any).ethereum) {
+                          try {
+                            const accounts = await (window as any).ethereum.request({ method:'eth_requestAccounts' });
+                            if (accounts[0]) { setWallet(accounts[0]); dirty.current=true; }
+                          } catch(e) { alert('Conexão recusada'); }
+                        } else { alert('MetaMask não encontrada. Instale em metamask.io'); }
+                      }} style={{ padding:'8px 12px', borderRadius:8, border:`0.5px solid ${ed.border}`, background:ed.bg2, color:accent, cursor:'pointer', fontSize:11, fontWeight:700, whiteSpace:'nowrap' }}>
+                        🦊 Connect
+                      </button>
+                    </div>
+                    {!wallet && <p style={{ fontSize:10, color:ed.text2, marginTop:4 }}>Not connected — install MetaMask to connect</p>}
                   </div>
                   <div>
                     <label style={lbl}>Email de contato</label>
@@ -633,6 +646,7 @@ export default function EditorPage() {
                   }} disabled={!feedText.trim()||posting} style={{display:'flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:9,border:'none',background:feedText.trim()?accent:'rgba(128,128,128,0.2)',color:'#fff',cursor:feedText.trim()?'pointer':'not-allowed',fontWeight:700,fontSize:13}}>
                     {posting?<Loader2 size={14} className="animate-spin"/>:<Send size={14}/>} Publicar
                   </button>
+                </div>
                 </div>
               </div>
               <div style={card}>

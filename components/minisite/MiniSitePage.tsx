@@ -42,5 +42,19 @@ export function MiniSitePage({ slug }: { slug: string }) {
     </div>
   );
 
+  // Track visit (fire and forget)
+  useEffect(() => {
+    if (!profile?.id) return;
+    const ref = typeof document !== 'undefined' ? document.referrer : '';
+    const dev = typeof navigator !== 'undefined' && navigator.userAgent.includes('Mobile') ? 'mobile' : 'desktop';
+    import('@/lib/supabase').then(({ supabase }) => {
+      (supabase as any).from('site_visits').insert({
+        site_id: profile.id, slug: profile.slug,
+        referrer: ref ? new URL(ref).hostname : 'direct',
+        device: dev,
+      }).then(() => {});
+    });
+  }, [profile?.id]);
+
   return <MiniSiteClient profile={profile} />;
 }

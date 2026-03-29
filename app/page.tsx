@@ -28,14 +28,19 @@ const FEATURES = [
   { icon: Shield, title: 'Verified Profiles', desc: 'YouTube verification. Blue and gold badges. Trustworthy professional presence.' },
 ];
 
-const PLANS = [
-  { name: 'Free', price: '$0', features: ['1 mini site', '1 free slug (7+ chars)', '10 links', 'Feed posts', 'Basic themes'], color: '#6b7280' },
-  { name: 'Pro', price: '$19.90', period: '/mo', features: ['Unlimited links', '3 site pages', 'Video paywall', 'CV paywall', 'Premium themes', '1 free premium slug'], color: A, popular: true },
-  { name: 'Elite', price: '$49.90', period: '/mo', features: ['Everything in Pro', '10 pages', 'Custom domain', 'Priority support', '3 free premium slugs'], color: '#f59e0b' },
-];
+// Plans loaded dynamically from DB - see usePlans hook
 
 export default function Home() {
   const { t } = useLang();
+  const [plans, setPlans] = useState<any[]>([]);
+
+  useEffect(() => {
+    import('@/lib/supabase').then(({ supabase }) => {
+      (supabase as any).from('platform_plans')
+        .select('*').eq('active', true).order('sort_order')
+        .then(({ data }: any) => { if (data?.length) setPlans(data); });
+    });
+  }, []);
 
   return (
     <div style={{ minHeight: '100vh', background: '#0d1117', color: '#f1f5f9', fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", overflowX: 'hidden' }}>
@@ -137,24 +142,31 @@ export default function Home() {
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 24px 100px' }}>
         <h2 style={{ textAlign: 'center', fontSize: 'clamp(24px,4vw,40px)', fontWeight: 900, marginBottom: 48, color: '#f1f5f9' }}>Simple pricing</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-          {PLANS.map(p => (
-            <div key={p.name} style={{
+          {plans.length === 0 ? (
+            // Loading state
+            [1,2].map(i => (
+              <div key={i} style={{ padding:28, borderRadius:20, background:'rgba(255,255,255,0.02)', border:'0.5px solid rgba(255,255,255,0.06)', minHeight:300 }}/>
+            ))
+          ) : plans.map((p, idx) => (
+            <div key={p.id} style={{
               padding: 28, borderRadius: 20, position: 'relative',
-              background: p.popular ? `linear-gradient(135deg, ${A}15, rgba(99,102,241,0.1))` : 'rgba(255,255,255,0.03)',
-              border: `0.5px solid ${p.popular ? A + '50' : 'rgba(255,255,255,0.07)'}`,
-              boxShadow: p.popular ? `0 0 40px ${A}15` : 'none',
+              background: idx===0 ? `linear-gradient(135deg, ${p.color||A}15, rgba(99,102,241,0.1))` : 'rgba(255,255,255,0.03)',
+              border: `0.5px solid ${idx===0 ? (p.color||A)+'50' : 'rgba(255,255,255,0.07)'}`,
+              boxShadow: idx===0 ? `0 0 40px ${p.color||A}15` : 'none',
             }}>
-              {p.popular && (
-                <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', padding: '4px 14px', borderRadius: 100, background: A, color: '#fff', fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap' }}>
+              {idx===0 && (
+                <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', padding: '4px 14px', borderRadius: 100, background: p.color||A, color: '#fff', fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap' }}>
                   Most Popular
                 </div>
               )}
-              <div style={{ fontSize: 14, fontWeight: 700, color: p.color, marginBottom: 8 }}>{p.name}</div>
+              <div style={{ fontSize: 18, marginBottom:4 }}>{p.emoji}</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: p.color||A, marginBottom: 8 }}>{p.name}</div>
               <div style={{ fontSize: 36, fontWeight: 900, color: '#f1f5f9', lineHeight: 1 }}>
-                {p.price}<span style={{ fontSize: 14, color: 'rgba(241,245,249,0.4)', fontWeight: 400 }}>{p.period || ''}</span>
+                ${p.price_monthly}<span style={{ fontSize: 14, color: 'rgba(241,245,249,0.4)', fontWeight: 400 }}>/mo</span>
               </div>
-              <ul style={{ listStyle: 'none', marginTop: 20, marginBottom: 24 }}>
-                {p.features.map(f => (
+              {p.price_yearly>0&&<p style={{ fontSize:12, color:'#4ade80', margin:'4px 0 0' }}>${p.price_yearly}/yr — save ${Math.round(p.price_monthly*12-p.price_yearly)}</p>}
+              <ul style={{ listStyle: 'none', marginTop: 20, marginBottom: 24, padding:0 }}>
+                {(Array.isArray(p.features)?p.features:[]).map((f: string) => (
                   <li key={f} style={{ fontSize: 13, color: 'rgba(241,245,249,0.7)', padding: '6px 0', borderBottom: '0.5px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ color: '#4ade80', fontSize: 12 }}>✓</span> {f}
                   </li>
@@ -163,10 +175,10 @@ export default function Home() {
               <Link href="/login" style={{
                 display: 'block', textAlign: 'center', padding: '12px',
                 borderRadius: 10, textDecoration: 'none', fontSize: 14, fontWeight: 700,
-                background: p.popular ? `linear-gradient(135deg, ${A}, #6366f1)` : 'rgba(255,255,255,0.08)',
-                color: '#fff', border: p.popular ? 'none' : '0.5px solid rgba(255,255,255,0.1)',
+                background: idx===0 ? `linear-gradient(135deg, ${p.color||A}, #6366f1)` : 'rgba(255,255,255,0.08)',
+                color: '#fff', border: idx===0 ? 'none' : '0.5px solid rgba(255,255,255,0.1)',
               }}>
-                {p.price === '$0' ? 'Start free' : 'Get started'}
+                Get started
               </Link>
             </div>
           ))}

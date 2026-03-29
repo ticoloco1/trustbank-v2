@@ -93,6 +93,45 @@ function FeedPost({ post, t }: any) {
   );
 }
 
+// ─── Contact Box ─────────────────────────────────────────────
+function ContactBox({ siteId, t, accentColor }: any) {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [msg, setMsg] = useState('');
+  const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  const send = async () => {
+    if (!msg.trim()) return;
+    setSending(true);
+    await supabase.from('site_messages' as any).insert({
+      site_id: siteId, sender_name: name, sender_email: email, message: msg,
+    });
+    setSent(true); setSending(false);
+    setTimeout(() => { setSent(false); setName(''); setEmail(''); setMsg(''); }, 3000);
+  };
+
+  return (
+    <GCard t={t} style={{ marginTop: 24 }}>
+      <p style={{ fontSize: 13, fontWeight: 800, color: t.text, marginBottom: 12 }}>💬 Enviar mensagem</p>
+      {sent ? (
+        <p style={{ fontSize: 13, color: '#4ade80', textAlign: 'center', padding: '12px 0' }}>✓ Mensagem enviada!</p>
+      ) : (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+            <input value={name} onChange={e=>setName(e.target.value)} placeholder="Seu nome" style={{ padding:'9px 12px', borderRadius:8, border:`0.5px solid ${t.border}`, background:'rgba(255,255,255,0.08)', color:t.text, fontSize:13, outline:'none', width:'100%', boxSizing:'border-box' as const }}/>
+            <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email (opcional)" type="email" style={{ padding:'9px 12px', borderRadius:8, border:`0.5px solid ${t.border}`, background:'rgba(255,255,255,0.08)', color:t.text, fontSize:13, outline:'none', width:'100%', boxSizing:'border-box' as const }}/>
+          </div>
+          <textarea value={msg} onChange={e=>setMsg(e.target.value)} placeholder="Sua mensagem…" rows={3} style={{ width:'100%', padding:'9px 12px', borderRadius:8, border:`0.5px solid ${t.border}`, background:'rgba(255,255,255,0.08)', color:t.text, fontSize:13, outline:'none', resize:'none', fontFamily:'inherit', marginBottom:8, boxSizing:'border-box' as const }}/>
+          <button onClick={send} disabled={!msg.trim()||sending} style={{ width:'100%', padding:'11px', borderRadius:10, border:'none', background:accentColor, color:'#fff', fontWeight:700, fontSize:14, cursor:'pointer' }}>
+            {sending ? 'Enviando…' : 'Enviar Mensagem'}
+          </button>
+        </>
+      )}
+    </GCard>
+  );
+}
+
 // ─── Main ────────────────────────────────────────────────────
 export default function MiniSiteClient({ profile }: { profile: any }) {
   const { user } = useAuth();
@@ -292,6 +331,11 @@ export default function MiniSiteClient({ profile }: { profile: any }) {
           )}
 
         </>)}
+
+        {/* Contact box */}
+        {profile.contact_email && activePage === 'home' && (
+          <ContactBox siteId={profile.id} t={t} accentColor={t.accent} />
+        )}
 
         {/* Footer */}
         <div style={{ marginTop:40, paddingTop:20, borderTop:`0.5px solid ${t.border}`, textAlign:'center' }}>
