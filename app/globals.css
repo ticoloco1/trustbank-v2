@@ -1,0 +1,65 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=JetBrains+Mono:wght@400;600&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --accent:  #818cf8;
+  --accent2: #06b6d4;
+  --bg:      #0d1117;
+  --bg2:     #161b22;
+  --surface: rgba(255,255,255,0.05);
+  --border:  rgba(255,255,255,0.08);
+  --text:    #f1f5f9;
+  --muted:   rgba(241,245,249,0.45);
+  --radius:  16px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 15px; direction: ltr; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  line-height: 1.6;
+  direction: ltr;
+  text-align: left;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
+
+/* Glass card */
+.glass {
+  background: rgba(255,255,255,0.04);
+  border: 0.5px solid rgba(255,255,255,0.09);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-radius: 20px;
+}
+
+/* Rich text content */
+.rich-content { direction: ltr; text-align: left; }
+.rich-content h1 { font-size: clamp(22px,4vw,32px); font-weight: 900; margin: 20px 0 10px; line-height: 1.2; }
+.rich-content h2 { font-size: clamp(18px,3vw,24px); font-weight: 800; margin: 16px 0 8px; }
+.rich-content p { margin: 0 0 12px; }
+.rich-content blockquote { border-left: 3px solid var(--accent); padding-left: 16px; margin: 12px 0; font-style: italic; opacity: 0.8; }
+.rich-content pre { background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px 16px; font-family: 'JetBrains Mono', monospace; font-size: 13px; overflow-x: auto; }
+.rich-content ul, .rich-content ol { padding-left: 24px; margin: 8px 0; }
+.rich-content img { max-width: 100%; border-radius: 8px; margin: 8px 0; }
+.rich-content iframe { max-width: 100%; border-radius: 8px; margin: 8px 0; }
+
+/* Feed scrollbox */
+.feed-window {
+  height: 434px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(129,140,248,0.3) transparent;
+}
