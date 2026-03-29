@@ -55,11 +55,4 @@ body {
 .rich-content img { max-width: 100%; border-radius: 8px; margin: 8px 0; }
 .rich-content iframe { max-width: 100%; border-radius: 8px; margin: 8px 0; }
 
-/* Feed scrollbox */
-.feed-window {
-  height: 434px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(129,140,248,0.3) transparent;
-}
+

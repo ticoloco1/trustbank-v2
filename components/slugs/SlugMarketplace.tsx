@@ -250,6 +250,15 @@ export function SlugMarketplace() {
                 }}>
                   <ShoppingCart size={14} /> {t.buy}
                 </button>
+                {isAdmin && (
+                  <button onClick={async () => {
+                    if (!confirm('Remove from marketplace?')) return;
+                    await (supabase as any).from('premium_slugs').update({ active: false }).eq('id', slug.id);
+                    setPremiumSlugs(prev => prev.filter((s: any) => s.id !== slug.id));
+                  }} style={{ width: '100%', marginTop: 6, padding: '7px', borderRadius: 9, border: '0.5px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', color: '#ef4444', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                    ✕ Remove from marketplace
+                  </button>
+                )}
               </div>
             ))}
           </div>
