@@ -17,6 +17,11 @@ import { useRouter } from 'next/navigation';
 
 const A = '#818cf8';
 
+function extractYouTubeId(url: string): string | null {
+  const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+  return m ? m[1] : null;
+}
+
 const THEMES = [
   { id:'dark',     label:'Dark',     bg:'#0a0a0f', text:'#f1f5f9', accent:'#818cf8' },
   { id:'midnight', label:'Midnight', bg:'#050508', text:'#f1f5f9', accent:'#6366f1' },
@@ -36,7 +41,7 @@ const ACCENTS = ['#818cf8','#f59e0b','#10b981','#ef4444','#06b6d4','#a855f7','#f
 
 export default function EditorPage() {
   const { user, loading: authLoading } = useAuth();
-  const { profile, loading: profileLoading, save } = useProfile(user);
+  const { profile, loading: profileLoading, update: save } = useProfile(user);
   const { links, addLink, deleteLink } = useSiteLinks(profile?.id);
   const { videos, addVideo, deleteVideo } = useSiteVideos(profile?.id);
   const { posts: feedPosts, addPost } = useFeedPosts(profile?.id);
@@ -389,7 +394,9 @@ export default function EditorPage() {
               )}
               <button onClick={async () => {
                 if (!ytUrl || !profile?.id) return;
-                await addVideo({ youtube_url:ytUrl, title:ytTitle||'Video', paywall_enabled:paywallOn, paywall_price:parseFloat(paywallPrice)||4.99, sort_order:videos.length });
+                const ytId = extractYouTubeId(ytUrl);
+                if (!ytId) { alert('Invalid YouTube URL'); return; }
+                await addVideo({ youtube_video_id:ytId, title:ytTitle||'Video', paywall_enabled:paywallOn, paywall_price:parseFloat(paywallPrice)||4.99, sort_order:videos.length });
                 setYtUrl(''); setYtTitle('');
               }} style={{ display:'flex', alignItems:'center', gap:6, padding:'10px 16px', borderRadius:10, border:'none', background:A, color:'#fff', cursor:'pointer', fontWeight:700, fontSize:13, marginBottom:16 }}>
                 <Plus size={15} /> Add Video

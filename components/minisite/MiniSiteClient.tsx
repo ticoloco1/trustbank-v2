@@ -1,386 +1,322 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
-  ExternalLink, Play, Lock, Unlock, MapPin, Globe, Mail,
-  Phone, Linkedin, Hash, BadgeCheck, Award, Share2, Heart,
-  Clock, Pin, ChevronDown, ChevronUp, Briefcase, GraduationCap, Star
+  ExternalLink, Play, Lock, MapPin, Globe, Mail, Phone,
+  Linkedin, BadgeCheck, Award, Share2, Heart, Clock, Pin,
+  ChevronDown, ChevronUp, Briefcase, GraduationCap, Zap, Edit
 } from 'lucide-react';
-import { useCountdown } from '@/hooks/useCountdown';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
+import { BoostButton } from '@/components/ui/BoostButton';
 
-// ─── Theme Engine (jobinlink ProfilePage) ───────────────────
+// ─── Theme Engine ────────────────────────────────────────────
 function getTheme(profile: any) {
-  const accent = profile.accent_color || '#8b5cf6';
-  const bgStyle = profile.bg_style || 'dark';
-  const isDark = bgStyle === 'dark' || bgStyle === 'midnight';
+  const accent = profile.accent_color || '#818cf8';
+  const bgStyle = profile.theme || 'dark';
 
-  const BG_MAP: Record<string, { bg:string; text:string; muted:string; surface:string; border:string }> = {
-    dark:          { bg:'#0a0a0f',  text:'#f1f5f9', muted:'rgba(241,245,249,0.5)', surface:'rgba(255,255,255,0.06)', border:'rgba(255,255,255,0.10)' },
-    midnight:      { bg:'#050508',  text:'#f1f5f9', muted:'rgba(241,245,249,0.45)', surface:'rgba(255,255,255,0.05)', border:'rgba(255,255,255,0.08)' },
-    white:         { bg:'#ffffff',  text:'#0f172a', muted:'rgba(15,23,42,0.5)', surface:'rgba(255,255,255,0.85)', border:'rgba(15,23,42,0.10)' },
-    beige:         { bg:'#faf7f2',  text:'#1c1917', muted:'rgba(28,25,23,0.5)', surface:'rgba(250,247,242,0.9)', border:'rgba(28,25,23,0.1)' },
-    'pastel-blue': { bg:'#f0f9ff',  text:'#0c4a6e', muted:'rgba(12,74,110,0.5)', surface:'rgba(240,249,255,0.9)', border:'rgba(12,74,110,0.12)' },
-    'pastel-pink': { bg:'#fdf2f8',  text:'#831843', muted:'rgba(131,24,67,0.5)', surface:'rgba(253,242,248,0.9)', border:'rgba(131,24,67,0.12)' },
-    'pastel-lav':  { bg:'#f5f3ff',  text:'#2e1065', muted:'rgba(46,16,101,0.5)', surface:'rgba(245,243,255,0.9)', border:'rgba(46,16,101,0.12)' },
-    'light-gray':  { bg:'#f1f5f9',  text:'#0f172a', muted:'rgba(15,23,42,0.5)', surface:'rgba(255,255,255,0.9)', border:'rgba(15,23,42,0.10)' },
+  const BG_MAP: Record<string, any> = {
+    dark:     { bg:'#0a0a0f', text:'#f1f5f9', muted:'rgba(241,245,249,0.45)', surface:'rgba(255,255,255,0.05)', border:'rgba(255,255,255,0.09)' },
+    midnight: { bg:'#050508', text:'#f1f5f9', muted:'rgba(241,245,249,0.4)', surface:'rgba(255,255,255,0.04)', border:'rgba(255,255,255,0.07)' },
+    ocean:    { bg:'#030d1a', text:'#e0f2fe', muted:'rgba(224,242,254,0.45)', surface:'rgba(56,189,248,0.08)', border:'rgba(56,189,248,0.15)' },
+    forest:   { bg:'#030d06', text:'#dcfce7', muted:'rgba(220,252,231,0.45)', surface:'rgba(74,222,128,0.07)', border:'rgba(74,222,128,0.15)' },
+    rose:     { bg:'#1a0010', text:'#ffe4e6', muted:'rgba(255,228,230,0.45)', surface:'rgba(251,113,133,0.08)', border:'rgba(251,113,133,0.15)' },
+    gold:     { bg:'#0c0900', text:'#fef3c7', muted:'rgba(254,243,199,0.45)', surface:'rgba(253,230,138,0.07)', border:'rgba(253,230,138,0.15)' },
+    nebula:   { bg:'#0d0520', text:'#f3e8ff', muted:'rgba(243,232,255,0.45)', surface:'rgba(168,85,247,0.08)', border:'rgba(168,85,247,0.15)' },
+    white:    { bg:'#ffffff', text:'#0f172a', muted:'rgba(15,23,42,0.5)', surface:'rgba(0,0,0,0.04)', border:'rgba(0,0,0,0.08)' },
+    beige:    { bg:'#faf7f2', text:'#1c1917', muted:'rgba(28,25,23,0.5)', surface:'rgba(0,0,0,0.03)', border:'rgba(0,0,0,0.07)' },
+    sky:      { bg:'#f0f9ff', text:'#0c4a6e', muted:'rgba(12,74,110,0.5)', surface:'rgba(14,165,233,0.06)', border:'rgba(14,165,233,0.15)' },
+    mint:     { bg:'#f0fdf4', text:'#14532d', muted:'rgba(20,83,45,0.5)', surface:'rgba(22,163,74,0.06)', border:'rgba(22,163,74,0.15)' },
+    lavender: { bg:'#faf5ff', text:'#4c1d95', muted:'rgba(76,29,149,0.5)', surface:'rgba(124,58,237,0.06)', border:'rgba(124,58,237,0.15)' },
   };
 
-  const GRAD_MAP: Record<string, string> = {
-    cosmic:   'linear-gradient(135deg, #4c1d95, #312e81, #1e1b4b)',
-    ocean:    'linear-gradient(135deg, #0c4a6e, #164e63, #0f766e)',
-    forest:   'linear-gradient(135deg, #14532d, #065f46, #134e4a)',
-    sunset:   'linear-gradient(135deg, #7c2d12, #78350f, #451a03)',
-    midnight: 'linear-gradient(135deg, #0f172a, #1e293b, #0f172a)',
-  };
-
-  const theme = BG_MAP[bgStyle] || BG_MAP.dark;
-  const gradient = GRAD_MAP[profile.gradient || 'cosmic'];
-  return { ...theme, accent, gradient, isDark };
+  const t = BG_MAP[bgStyle] || BG_MAP.dark;
+  const isDark = ['dark','midnight','ocean','forest','rose','gold','nebula'].includes(bgStyle);
+  return { ...t, accent, isDark };
 }
 
-// ─── Glass Card ─────────────────────────────────────────────
+// ─── Glass Card ──────────────────────────────────────────────
 function GCard({ children, t, style, onClick }: any) {
   return (
     <div onClick={onClick} style={{
-      background: t.surface, border:`0.5px solid ${t.border}`,
-      borderRadius:20, backdropFilter:'blur(20px) saturate(180%)',
-      WebkitBackdropFilter:'blur(20px) saturate(180%)',
-      padding:20, cursor:onClick?'pointer':'default',
-      transition:'all 0.2s', ...style
+      background: t.surface, border: `0.5px solid ${t.border}`,
+      borderRadius: 18, padding: 18,
+      backdropFilter: 'blur(20px) saturate(180%)',
+      WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+      cursor: onClick ? 'pointer' : 'default',
+      transition: 'all 0.2s', ...style,
     }}>
       {children}
     </div>
   );
 }
 
-// ─── Countdown Badge ─────────────────────────────────────────
-function Countdown({ expiresAt, accent, pinned }: any) {
-  const { d,h,m,s,expired } = useCountdown(expiresAt);
-  if (expired) return <span style={{ fontSize:10, color:'#ef4444' }}>Expired</span>;
-  return (
-    <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-      {pinned && <Pin style={{ width:11, height:11, color:accent }}/>}
-      <Clock style={{ width:11, height:11, opacity:0.4 }}/>
-      <span style={{ fontFamily:'monospace', fontSize:11, fontWeight:600, color:pinned?accent:'inherit' }}>
-        {pinned ? `${d}d ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : d>0?`${d}d ${h}h`:`${h}h ${m}m ${s}s`}
-      </span>
-    </div>
-  );
-}
-
 // ─── Feed Post ────────────────────────────────────────────────
-function FeedPostCard({ post, t }: any) {
+function FeedPost({ post, t }: any) {
   const [liked, setLiked] = useState(false);
-  const [likes, setLikes] = useState(post.likes||0);
-  const imgs = post.images || (post.imageUrl ? [post.imageUrl] : []);
+  const [likes, setLikes] = useState(post.likes || 0);
+  const timeLeft = post.expires_at ? Math.max(0, Math.ceil((new Date(post.expires_at).getTime() - Date.now()) / 3600000)) : 0;
+
   return (
-    <GCard t={t} style={{ border:post.pinned?`0.5px solid ${t.accent}40`:undefined, marginBottom:12 }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-        {post.pinned && (
-          <span style={{ fontSize:10, padding:'2px 8px', borderRadius:20, background:`${t.accent}15`, color:t.accent, border:`0.5px solid ${t.accent}30`, display:'inline-flex', alignItems:'center', gap:4 }}>
-            <Pin style={{ width:10, height:10 }}/> Pinned · 1 year
-          </span>
-        )}
-        <div style={{ marginLeft:'auto' }}>
-          <Countdown expiresAt={post.expiresAt||post.expires_at} accent={t.accent} pinned={post.pinned}/>
-        </div>
-      </div>
-      <p style={{ fontSize:14, lineHeight:1.65, color:t.text, whiteSpace:'pre-wrap', marginBottom:imgs.length?12:0 }}>{post.text||post.caption}</p>
-      {imgs.length > 0 && (
-        <div style={{ display:'grid', gridTemplateColumns:imgs.length===1?'1fr':imgs.length===2?'1fr 1fr':'1fr 1fr 1fr', gap:6, borderRadius:12, overflow:'hidden', marginBottom:12 }}>
-          {imgs.map((img:string,i:number) => (
-            <img key={i} src={img} alt="" style={{ width:'100%', height:imgs.length===1?220:140, objectFit:'cover' }}/>
-          ))}
+    <GCard t={t} style={{ marginBottom: 10, border: post.pinned ? `0.5px solid ${t.accent}40` : `0.5px solid ${t.border}` }}>
+      {post.pinned && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 8 }}>
+          <Pin size={10} color={t.accent} />
+          <span style={{ fontSize: 10, color: t.accent, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Pinned</span>
         </div>
       )}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingTop:10, borderTop:`0.5px solid ${t.border}` }}>
-        <button onClick={()=>{setLiked(!liked);setLikes((l:number)=>liked?l-1:l+1);}}
-          style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:liked?'#ef4444':t.muted, background:'none', border:'none', cursor:'pointer', transition:'all 0.2s' }}>
-          <Heart style={{ width:15, height:15, fill:liked?'currentColor':'none' }}/> {likes}
+      <p style={{ fontSize: 14, color: t.text, margin: 0, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{post.text}</p>
+      {post.image_url && <img src={post.image_url} style={{ width: '100%', borderRadius: 10, marginTop: 10, objectFit: 'cover', maxHeight: 240 }} />}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, paddingTop: 8, borderTop: `0.5px solid ${t.border}` }}>
+        <button onClick={() => { setLiked(l => !l); setLikes((n: number) => liked ? n-1 : n+1); }}
+          style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', color: liked ? '#fb7185' : t.muted, fontSize: 12 }}>
+          <Heart size={13} fill={liked ? '#fb7185' : 'none'} /> {likes > 0 ? likes : ''}
         </button>
-        <button style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:t.muted, background:'none', border:'none', cursor:'pointer' }}>
-          <Share2 style={{ width:14, height:14 }}/> Share
-        </button>
-      </div>
-    </GCard>
-  );
-}
-
-// ─── CV Section ───────────────────────────────────────────────
-function CVSection({ cv, name, t }: any) {
-  const [unlocked, setUnlocked] = useState(false);
-  const [open, setOpen] = useState(false);
-  const exps = cv?.experiences || [];
-  const edu = cv?.education || [];
-  return (
-    <GCard t={t}>
-      <button onClick={() => setOpen(!open)}
-        style={{ display:'flex', justifyContent:'space-between', alignItems:'center', width:'100%', background:'none', border:'none', cursor:'pointer', padding:0 }}>
-        <span style={{ fontSize:15, fontWeight:600, color:t.text, display:'flex', alignItems:'center', gap:8 }}>
-          <Briefcase style={{ width:16, height:16, color:t.accent }}/> Experience & Education
-        </span>
-        {open ? <ChevronUp style={{ width:16, height:16, color:t.muted }}/> : <ChevronDown style={{ width:16, height:16, color:t.muted }}/>}
-      </button>
-      {open && (
-        <div style={{ marginTop:16 }}>
-          {exps.map((e:any) => (
-            <div key={e.id} style={{ marginBottom:14, paddingBottom:14, borderBottom:`0.5px solid ${t.border}` }}>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-                <div>
-                  <p style={{ fontSize:14, fontWeight:600, color:t.text }}>{e.role}</p>
-                  <p style={{ fontSize:13, color:t.accent }}>{e.company}</p>
-                  <p style={{ fontSize:12, color:t.muted }}>{e.start} — {e.current?'Present':e.end}</p>
-                  {e.lockLevel==='public' && e.description && (
-                    <p style={{ fontSize:13, color:t.muted, marginTop:4, lineHeight:1.5 }}>{e.description}</p>
-                  )}
-                </div>
-                <div style={{ width:8, height:8, borderRadius:'50%', background:e.current?t.accent:`${t.accent}40`, marginTop:4, flexShrink:0 }}/>
-              </div>
-              {e.lockLevel==='paid' && (
-                <div style={{ display:'inline-flex', alignItems:'center', gap:6, marginTop:6, fontSize:12, padding:'3px 10px', borderRadius:20, background:`${t.accent}15`, color:t.accent, border:`0.5px solid ${t.accent}30` }}>
-                  <Lock style={{ width:11, height:11 }}/> Premium — unlock with CV
-                </div>
-              )}
-            </div>
-          ))}
-          {edu.map((e:any) => (
-            <div key={e.id} style={{ marginBottom:12 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:2 }}>
-                <GraduationCap style={{ width:14, height:14, color:t.accent }}/>
-                <p style={{ fontSize:14, fontWeight:600, color:t.text }}>{e.degree}</p>
-              </div>
-              <p style={{ fontSize:13, color:t.accent }}>{e.institution}</p>
-              <p style={{ fontSize:12, color:t.muted }}>{e.start} — {e.current?'Present':e.end}</p>
-            </div>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: t.muted }}>
+          <Clock size={11} />
+          {post.pinned ? `${Math.ceil(timeLeft/24)}d` : timeLeft > 24 ? `${Math.ceil(timeLeft/24)}d` : `${timeLeft}h`}
         </div>
-      )}
-
-      {/* Contact lock */}
-      <div style={{ marginTop:16, paddingTop:16, borderTop:`0.5px solid ${t.border}` }}>
-        {!unlocked ? (
-          <div style={{ textAlign:'center' }}>
-            <div style={{ width:44, height:44, borderRadius:14, background:`${t.accent}15`, border:`0.5px solid ${t.accent}30`, display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 10px' }}>
-              <Lock style={{ width:22, height:22, color:t.accent }}/>
-            </div>
-            <p style={{ fontSize:14, fontWeight:600, color:t.text, marginBottom:4 }}>Contact locked</p>
-            <p style={{ fontSize:12, color:t.muted, marginBottom:14 }}>
-              {name} receives 50% · One-time unlock
-            </p>
-            <button onClick={() => setUnlocked(true)}
-              style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, width:'100%', padding:'12px', borderRadius:14, border:'none', background:t.accent, color:'#fff', fontSize:14, fontWeight:700, cursor:'pointer', boxShadow:`0 0 20px ${t.accent}40` }}>
-              <Unlock style={{ width:16, height:16 }}/> Unlock for $20 USDC
-            </button>
-            <p style={{ fontSize:11, color:t.muted, marginTop:8 }}>You pay $20 · {name} gets $10 instantly</p>
-          </div>
-        ) : (
-          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-            <p style={{ fontSize:14, fontWeight:600, color:t.text, marginBottom:4 }}>📞 Contact Details</p>
-            {cv?.contact?.email && (
-              <a href={`mailto:${cv.contact.email}`} style={{ display:'flex', alignItems:'center', gap:8, fontSize:13, color:t.accent, textDecoration:'none' }}>
-                <Mail style={{ width:14, height:14 }}/> {cv.contact.email}
-              </a>
-            )}
-            {cv?.contact?.phone && (
-              <p style={{ display:'flex', alignItems:'center', gap:8, fontSize:13, color:t.muted }}>
-                <Phone style={{ width:14, height:14 }}/> {cv.contact.phone}
-              </p>
-            )}
-            {cv?.contact?.linkedin && (
-              <a href={`https://${cv.contact.linkedin}`} target="_blank" rel="noopener noreferrer"
-                style={{ display:'flex', alignItems:'center', gap:8, fontSize:13, color:t.accent, textDecoration:'none' }}>
-                <Linkedin style={{ width:14, height:14 }}/> {cv.contact.linkedin}
-              </a>
-            )}
-          </div>
-        )}
       </div>
     </GCard>
   );
 }
 
-// ─── Video Card ───────────────────────────────────────────────
-function VideoCard({ video, t }: any) {
-  const [unlocked, setUnlocked] = useState(!video.paywall_enabled);
-  const ytId = video.youtube_id || video.youtubeId;
-  const thumb = video.thumbnail_url || `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg`;
-  return (
-    <GCard t={t} style={{ padding:0, overflow:'hidden', marginBottom:12 }}>
-      <div style={{ position:'relative', cursor:'pointer' }} onClick={() => !unlocked && setUnlocked(true)}>
-        <img src={thumb} alt={video.title} style={{ width:'100%', height:200, objectFit:'cover', filter:unlocked?'none':'blur(3px) brightness(0.6)' }}/>
-        {!unlocked && (
-          <div style={{ position:'absolute', inset:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:8 }}>
-            <div style={{ width:52, height:52, borderRadius:'50%', background:'rgba(0,0,0,0.6)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-              <Lock style={{ width:24, height:24, color:'#fff' }}/>
-            </div>
-            <span style={{ fontSize:12, fontWeight:700, color:'#fff', padding:'4px 14px', borderRadius:20, background:`${t.accent}cc` }}>
-              ${video.paywall_price} USDC · {video.access_hours||24}h access
-            </span>
-          </div>
-        )}
-      </div>
-      {unlocked && (
-        <div style={{ position:'relative', paddingTop:'56.25%' }}>
-          <iframe src={`https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1`}
-            style={{ position:'absolute', inset:0, width:'100%', height:'100%' }}
-            allowFullScreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"/>
-        </div>
-      )}
-      <div style={{ padding:16 }}>
-        <p style={{ fontSize:14, fontWeight:600, color:t.text, marginBottom:4 }}>{video.title}</p>
-        {video.description && <p style={{ fontSize:12, color:t.muted, lineHeight:1.5 }}>{video.description}</p>}
-        {!unlocked && (
-          <button onClick={() => setUnlocked(true)}
-            style={{ marginTop:12, display:'flex', alignItems:'center', justifyContent:'center', gap:8, width:'100%', padding:10, borderRadius:12, border:'none', background:t.accent, color:'#fff', fontSize:13, fontWeight:600, cursor:'pointer' }}>
-            <Play style={{ width:14, height:14 }}/> Unlock · ${video.paywall_price} USDC
-          </button>
-        )}
-      </div>
-    </GCard>
-  );
-}
-
-// ─── Main Component ───────────────────────────────────────────
+// ─── Main Component ──────────────────────────────────────────
 export default function MiniSiteClient({ profile }: { profile: any }) {
+  const { user } = useAuth();
+  const [activePage, setActivePage] = useState('home');
+  const [posts, setPosts] = useState<any[]>([]);
+  const [links, setLinks] = useState<any[]>([]);
+  const [videos, setVideos] = useState<any[]>([]);
+
   const t = getTheme(profile);
-  const cols = profile.columns || 1;
-  const feedPosts = profile.feedPosts || [];
-  const videos = profile.videos || [];
-  const links = profile.links || [];
-  const cv = profile.cv || {};
+  const isOwner = user?.id === profile.user_id;
 
-  const sortedPosts = [...feedPosts].sort((a,b) => {
-    if (a.pinned&&!b.pinned) return -1;
-    if (!a.pinned&&b.pinned) return 1;
-    return new Date(b.created_at).getTime()-new Date(a.created_at).getTime();
-  });
+  // Parse pages
+  const pages: {id:string;label:string}[] = (() => {
+    try { return JSON.parse(profile.site_pages || '[]'); } catch { return []; }
+  })();
+  const hasPagesMenu = pages.length > 1;
 
-  const SOCIAL_ICONS: Record<string,any> = {
-    linkedin: Linkedin, github: Globe, instagram: Hash,
-    twitter: Hash, youtube: Play, tiktok: Hash, website: Globe,
-    email: Mail, whatsapp: Phone,
-  };
+  const pageContents: Record<string,string> = (() => {
+    try { return JSON.parse(profile.page_contents || '{}'); } catch { return {}; }
+  })();
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    // Load links
+    supabase.from('mini_site_links').select('*').eq('site_id', profile.id).order('sort_order')
+      .then(({ data }) => setLinks(data || []));
+    // Load videos
+    supabase.from('mini_site_videos').select('*').eq('site_id', profile.id).order('sort_order')
+      .then(({ data }) => setVideos(data || []));
+    // Load feed
+    supabase.from('feed_posts').select('*').eq('site_id', profile.id)
+      .gte('expires_at', new Date().toISOString())
+      .order('pinned', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(20)
+      .then(({ data }) => setPosts(data || []));
+  }, [profile.id]);
+
+  const photoShape = profile.photo_shape === 'square' ? '8px' : profile.photo_shape === 'rounded' ? '20px' : '50%';
 
   return (
-    <div style={{ minHeight:'100vh', background:t.bg, color:t.text, fontFamily:"-apple-system,'Plus Jakarta Sans',sans-serif" }}>
-      {/* Ambient */}
-      <div style={{ position:'fixed', top:-300, left:'50%', transform:'translateX(-50%)', width:700, height:700, borderRadius:'50%', background:t.accent, opacity:0.06, filter:'blur(100px)', pointerEvents:'none', zIndex:0 }}/>
-
-      {/* Nav */}
-      <nav style={{ position:'sticky', top:0, zIndex:50, display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 20px', background:t.isDark?'rgba(5,5,8,0.85)':'rgba(255,255,255,0.85)', backdropFilter:'blur(20px)', borderBottom:`0.5px solid ${t.border}` }}>
-        <a href="/" style={{ display:'flex', alignItems:'center', gap:6, textDecoration:'none', opacity:0.7 }}>
-          <Hash style={{ width:16, height:16, color:t.accent }}/>
-          <span style={{ fontSize:13, fontWeight:700, color:t.accent }}>jobinlink</span>
-        </a>
-        <a href="/signup" style={{ fontSize:12, fontWeight:600, padding:'6px 14px', borderRadius:10, background:t.accent, color:'#fff', textDecoration:'none' }}>
-          Create yours
-        </a>
-      </nav>
-
+    <div style={{
+      minHeight: '100vh', background: t.bg, color: t.text,
+      fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
+      direction: 'ltr',
+    }}>
       {/* Banner */}
-      <div style={{ height:160, background:t.gradient, position:'relative', overflow:'hidden' }}>
-        {profile.banner_url && <img src={profile.banner_url} alt="" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', opacity:0.6 }}/>}
-      </div>
+      {profile.banner_url && (
+        <div style={{ width: '100%', height: 140, overflow: 'hidden', position: 'relative' }}>
+          <img src={profile.banner_url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to bottom, transparent 40%, ${t.bg})` }} />
+        </div>
+      )}
 
-      {/* Content */}
-      <div style={{ maxWidth: cols===3?960:cols===2?720:520, margin:'0 auto', padding:'0 20px 60px', position:'relative', zIndex:1 }}>
-
-        {/* Hero */}
-        <div style={{ marginTop:-60, marginBottom:28 }}>
+      <div style={{ maxWidth: 480, margin: '0 auto', padding: '0 20px 40px' }}>
+        {/* Header */}
+        <div style={{ textAlign: 'center', paddingTop: profile.banner_url ? 0 : 32, marginBottom: 24 }}>
           {profile.avatar_url ? (
-            <img src={profile.avatar_url} alt={profile.site_name} style={{ width:100, height:100, borderRadius:cols===1?'50%':16, objectFit:'cover', border:`3px solid ${t.isDark?'#0a0a0f':'#fff'}`, boxShadow:`0 0 0 2px ${t.accent}40`, marginBottom:16 }}/>
+            <img src={profile.avatar_url} style={{ width: 88, height: 88, borderRadius: photoShape, objectFit: 'cover', border: `2.5px solid ${t.accent}`, marginTop: profile.banner_url ? -44 : 0, display: 'block', margin: '0 auto 12px' }} />
           ) : (
-            <div style={{ width:100, height:100, borderRadius:cols===1?'50%':16, background:`linear-gradient(135deg,${t.accent},${t.accent}88)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:36, fontWeight:800, color:'#fff', border:`3px solid ${t.isDark?'#0a0a0f':'#fff'}`, marginBottom:16 }}>
-              {profile.site_name?.charAt(0)||'?'}
+            <div style={{ width: 88, height: 88, borderRadius: '50%', background: `${t.accent}25`, border: `2px solid ${t.accent}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, fontWeight: 900, color: t.accent, margin: '0 auto 12px' }}>
+              {(profile.site_name || '?')[0].toUpperCase()}
             </div>
           )}
 
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
-            <h1 style={{ fontSize:24, fontWeight:800, color:t.text }}>{profile.site_name}</h1>
-            {profile.badge==='blue' && <BadgeCheck style={{ width:22, height:22, color:'#3b82f6' }}/>}
-            {profile.badge==='gold' && <Award style={{ width:22, height:22, color:'#f59e0b' }}/>}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 4 }}>
+            <h1 style={{ fontSize: 22, fontWeight: 900, color: t.text, margin: 0 }}>{profile.site_name || profile.slug}</h1>
+            {profile.badge === 'blue' && <BadgeCheck size={18} color="#60a5fa" />}
+            {profile.badge === 'gold' && <Award size={18} color="#f59e0b" />}
           </div>
-          {profile.tagline && <p style={{ fontSize:14, color:t.muted, marginBottom:6 }}>{profile.tagline}</p>}
-          {profile.cv_location && (
-            <p style={{ display:'flex', alignItems:'center', gap:4, fontSize:13, color:`${t.muted}`, marginBottom:12 }}>
-              <MapPin style={{ width:13, height:13 }}/> {profile.cv_location}
-            </p>
-          )}
 
-          {/* Skills */}
-          {profile.cv_skills && (
-            <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:16 }}>
-              {profile.cv_skills.split(',').map((sk:string) => (
-                <span key={sk} style={{ fontSize:11, padding:'3px 10px', borderRadius:20, background:`${t.accent}12`, color:t.accent, border:`0.5px solid ${t.accent}25` }}>{sk.trim()}</span>
-              ))}
-            </div>
-          )}
+          {profile.cv_headline && <p style={{ fontSize: 13, color: t.accent, fontWeight: 600, margin: '0 0 4px' }}>{profile.cv_headline}</p>}
+          {profile.bio && <p style={{ fontSize: 13, color: t.muted, margin: '0 0 12px', lineHeight: 1.6 }}>{profile.bio}</p>}
 
-          {profile.bio && (
-            <p style={{ fontSize:14, color:t.muted, lineHeight:1.65, marginBottom:16 }}>{profile.bio}</p>
-          )}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {isOwner && (
+              <a href="/editor" style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 14px', borderRadius: 8, background: `${t.accent}15`, border: `0.5px solid ${t.accent}30`, color: t.accent, textDecoration: 'none', fontSize: 12, fontWeight: 700 }}>
+                <Edit size={12} /> Edit site
+              </a>
+            )}
+            <BoostButton siteId={profile.id} slug={profile.slug} accent={t.accent} compact />
+            <button onClick={() => { navigator.share?.({ url: window.location.href }); }}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 8, background: `${t.surface}`, border: `0.5px solid ${t.border}`, color: t.muted, cursor: 'pointer', fontSize: 12 }}>
+              <Share2 size={12} /> Share
+            </button>
+          </div>
         </div>
 
-        {/* Grid */}
-        <div style={{ display:'grid', gridTemplateColumns:cols===1?'1fr':cols===2?'1fr 1fr':'1fr 1fr 1fr', gap:16 }}>
+        {/* Pages navigation */}
+        {hasPagesMenu && (
+          <div style={{ display: 'flex', gap: 4, marginBottom: 20, justifyContent: 'center', background: t.surface, borderRadius: 12, padding: 4 }}>
+            {pages.map(page => (
+              <button key={page.id} onClick={() => setActivePage(page.id)} style={{
+                flex: 1, padding: '8px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                background: activePage === page.id ? t.accent : 'transparent',
+                color: activePage === page.id ? '#fff' : t.muted,
+                fontSize: 13, fontWeight: 700, transition: 'all 0.15s',
+              }}>
+                {page.label}
+              </button>
+            ))}
+          </div>
+        )}
 
-          {/* Feed */}
-          {sortedPosts.length > 0 && (
-            <div style={{ gridColumn:cols>1?'1':undefined }}>
-              {sortedPosts.map(post => <FeedPostCard key={post.id} post={post} t={t}/>)}
-            </div>
-          )}
+        {/* Page content (non-home) */}
+        {activePage !== 'home' && (
+          <div className="rich-content" style={{ fontSize: 15, lineHeight: 1.8, color: t.text, marginBottom: 24 }}
+            dangerouslySetInnerHTML={{ __html: pageContents[activePage] || `<p style="opacity:0.4;text-align:center;padding:40px 0">No content yet</p>` }}
+          />
+        )}
 
-          {/* Links */}
-          {links.length > 0 && (
-            <div>
-              {links.map((link:any) => (
-                <GCard key={link.id} t={t} style={{ marginBottom:10, padding:'14px 18px' }}>
-                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <p style={{ fontSize:14, fontWeight:600, color:t.text, marginBottom:2 }}>{link.title}</p>
-                      {link.description && <p style={{ fontSize:12, color:t.muted }}>{link.description}</p>}
+        {/* Home content */}
+        {activePage === 'home' && (
+          <>
+            {/* Home page rich content */}
+            {pageContents['home'] && (
+              <div className="rich-content" style={{ fontSize: 15, lineHeight: 1.8, color: t.text, marginBottom: 20 }}
+                dangerouslySetInnerHTML={{ __html: pageContents['home'] }}
+              />
+            )}
+
+            {/* Links */}
+            {links.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                {links.map(link => (
+                  <a key={link.id} href={link.url} target="_blank" rel="noopener" style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '14px 16px', borderRadius: 14, marginBottom: 8,
+                    background: link.color ? `${link.color}15` : t.surface,
+                    border: `0.5px solid ${link.color ? `${link.color}30` : t.border}`,
+                    textDecoration: 'none', transition: 'all 0.15s',
+                  }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: link.color || t.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Globe size={14} color="#fff" />
                     </div>
-                    {link.locked ? (
-                      <span style={{ fontSize:11, padding:'3px 10px', borderRadius:20, background:`${t.accent}15`, color:t.accent, border:`0.5px solid ${t.accent}30`, whiteSpace:'nowrap', marginLeft:10 }}>
-                        🔒 ${link.lockPrice}
-                      </span>
-                    ) : (
-                      <a href={link.url} target="_blank" rel="noopener noreferrer"
-                        style={{ color:t.accent, marginLeft:10, flexShrink:0 }}>
-                        <ExternalLink style={{ width:16, height:16 }}/>
-                      </a>
-                    )}
+                    <span style={{ flex: 1, textAlign: 'center', fontSize: 14, fontWeight: 700, color: t.text }}>{link.title}</span>
+                    <ExternalLink size={13} color={t.muted} />
+                  </a>
+                ))}
+              </div>
+            )}
+
+            {/* CV Section */}
+            {profile.show_cv && (
+              <GCard t={t} style={{ marginBottom: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <Briefcase size={16} color={t.accent} />
+                  <span style={{ fontSize: 14, fontWeight: 800, color: t.text }}>Resume / CV</span>
+                  {profile.cv_locked && <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#f59e0b', fontWeight: 700 }}><Lock size={11} /> ${profile.cv_price} USDC to unlock</span>}
+                </div>
+                {profile.cv_headline && <p style={{ fontSize: 14, fontWeight: 700, color: t.accent, margin: '0 0 4px' }}>{profile.cv_headline}</p>}
+                {profile.cv_location && <p style={{ fontSize: 12, color: t.muted, margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: 4 }}><MapPin size={11} /> {profile.cv_location}</p>}
+                {profile.cv_locked ? (
+                  <button style={{ width: '100%', padding: '12px', borderRadius: 10, border: 'none', background: `linear-gradient(135deg, #f59e0b, #d97706)`, color: '#fff', fontWeight: 800, cursor: 'pointer', fontSize: 14 }}>
+                    🔓 Unlock CV — ${profile.cv_price} USDC
+                  </button>
+                ) : (
+                  profile.cv_content && <p style={{ fontSize: 13, color: t.muted, lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>{profile.cv_content.slice(0, 300)}{profile.cv_content.length > 300 ? '...' : ''}</p>
+                )}
+              </GCard>
+            )}
+
+            {/* Videos */}
+            {videos.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: t.muted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Videos</p>
+                {videos.map(v => (
+                  <GCard key={v.id} t={t} style={{ marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      {v.youtube_video_id && (
+                        <img src={`https://img.youtube.com/vi/${v.youtube_video_id}/mqdefault.jpg`} style={{ width: 80, height: 56, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
+                      )}
+                      <div style={{ flex: 1 }}>
+                        <p style={{ fontSize: 13, fontWeight: 700, color: t.text, margin: '0 0 4px' }}>{v.title}</p>
+                        {v.paywall_enabled ? (
+                          <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 700 }}>🔒 ${v.paywall_price} USDC</span>
+                        ) : (
+                          <span style={{ fontSize: 11, color: t.muted }}>Free</span>
+                        )}
+                      </div>
+                      <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${t.accent}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {v.paywall_enabled ? <Lock size={14} color={t.accent} /> : <Play size={14} color={t.accent} />}
+                      </div>
+                    </div>
+                  </GCard>
+                ))}
+              </div>
+            )}
+
+            {/* Feed */}
+            {profile.show_feed !== false && posts.length > 0 && (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: t.muted, textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>Posts</p>
+                  <span style={{ fontSize: 11, color: t.muted }}>{posts.length} posts</span>
+                </div>
+                {/* Feed window with scroll */}
+                <div className="feed-window" style={{ borderRadius: 14, border: `0.5px solid ${t.border}` }}>
+                  <div style={{ padding: 8 }}>
+                    {posts.map(post => <FeedPost key={post.id} post={post} t={t} />)}
                   </div>
-                </GCard>
-              ))}
-            </div>
-          )}
+                </div>
+              </div>
+            )}
 
-          {/* Videos */}
-          {videos.length > 0 && (
-            <div>
-              {videos.map((v:any) => <VideoCard key={v.id} video={v} t={t}/>)}
-            </div>
-          )}
-
-          {/* CV */}
-          {profile.show_cv && (
-            <div style={{ gridColumn:cols>1?`1 / -1`:undefined }}>
-              <CVSection cv={cv} name={profile.site_name} t={t}/>
-            </div>
-          )}
-
-        </div>
+            {/* New post (owner only) */}
+            {isOwner && profile.show_feed !== false && (
+              <div style={{ marginTop: 16, padding: '12px 14px', borderRadius: 12, background: `${t.accent}08`, border: `0.5px solid ${t.accent}20`, textAlign: 'center' }}>
+                <a href="/dashboard" style={{ fontSize: 13, color: t.accent, fontWeight: 700, textDecoration: 'none' }}>
+                  ✍️ Post to your feed →
+                </a>
+              </div>
+            )}
+          </>
+        )}
 
         {/* Footer */}
-        <div style={{ marginTop:40, paddingTop:20, borderTop:`0.5px solid ${t.border}`, textAlign:'center' }}>
-          <p style={{ fontSize:12, color:`${t.muted}`, opacity:0.6 }}>
-            Powered by <a href="/" style={{ color:t.accent, textDecoration:'none' }}>TrustBank</a>
-            {' · '}
-            <a href="/signup" style={{ color:t.accent, textDecoration:'none' }}>Create your mini-site</a>
+        <div style={{ marginTop: 40, paddingTop: 20, borderTop: `0.5px solid ${t.border}`, textAlign: 'center' }}>
+          <p style={{ fontSize: 11, color: t.muted, opacity: 0.5, margin: 0 }}>
+            <a href="/" style={{ color: 'inherit', textDecoration: 'none', fontWeight: 700 }}>TrustBank</a> · {profile.slug}.trustbank.xyz
           </p>
         </div>
       </div>
+
+      <style>{`
+        .feed-window { overflow-y: auto; max-height: 434px; scrollbar-width: thin; scrollbar-color: rgba(129,140,248,0.2) transparent; }
+        .rich-content { direction: ltr; text-align: left; }
+        .rich-content h1 { font-size: clamp(20px,4vw,28px); font-weight: 900; margin: 16px 0 8px; }
+        .rich-content h2 { font-size: clamp(17px,3vw,22px); font-weight: 800; margin: 14px 0 6px; }
+        .rich-content p { margin: 0 0 10px; }
+        .rich-content ul, .rich-content ol { padding-left: 20px; margin: 8px 0; }
+        .rich-content img { max-width: 100%; border-radius: 8px; margin: 8px 0; }
+        .rich-content iframe { max-width: 100%; border-radius: 8px; margin: 8px 0; }
+        .rich-content blockquote { border-left: 3px solid; padding-left: 12px; opacity: 0.8; margin: 10px 0; font-style: italic; }
+        .rich-content a { text-decoration: underline; }
+        .rich-content pre { background: rgba(0,0,0,0.15); border-radius: 6px; padding: 10px; font-family: monospace; font-size: 12px; overflow-x: auto; }
+      `}</style>
     </div>
   );
 }
