@@ -183,10 +183,11 @@ export default function MiniSiteClient({ profile }: { profile: any }) {
         </div>
       )}
 
-      <div style={{ maxWidth:500, margin:'0 auto', padding:`${profile.banner_url?0:32}px 20px 60px` }}>
+      <div style={{ maxWidth:500, margin:'0 auto', padding:'0 20px 60px', paddingTop: profile.banner_url ? 0 : 32 }}>
 
         {/* Header */}
-        <div style={{ textAlign:'center', marginBottom:24, marginTop:profile.banner_url?-photoSizePx/2:0 }}>
+        <div style={{ textAlign:'center', marginBottom:24, position:'relative', zIndex:2,
+          marginTop: profile.banner_url ? -(photoSizePx/2 + 4) : 0 }}>
           {profile.avatar_url
             ? <img src={profile.avatar_url} style={{ width:photoSizePx, height:photoSizePx, borderRadius:photoRadius, objectFit:'cover', border:`2.5px solid ${t.accent}`, display:'block', margin:'0 auto 12px' }}/>
             : <div style={{ width:photoSizePx, height:photoSizePx, borderRadius:photoSizePx/2, background:`${t.accent}22`, border:`2px solid ${t.accent}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:photoSizePx*0.38, fontWeight:900, color:t.accent, margin:'0 auto 12px' }}>{(profile.site_name||'?')[0].toUpperCase()}</div>

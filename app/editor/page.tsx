@@ -7,6 +7,7 @@ import { slugPrice } from '@/lib/slug';
 import { THEMES } from '@/lib/themes';
 import { RichTextEditor } from '@/components/editor/RichTextEditor';
 import { Navbar } from '@/components/layout/Navbar';
+import { useLang } from '@/hooks/useLang';
 import {
   Save, Eye, Upload, Plus, X, Loader2, Check,
   User, Palette, Link2, Video, FileText, Hash,
@@ -41,6 +42,7 @@ function EditorInner() {
   const { videos, addVideo, deleteVideo } = useSiteVideos(profile?.id);
   const { posts: rawPosts, addPost } = useFeedPosts(profile?.id);
   const router = useRouter();
+  const { t } = useLang();
   const searchParams = useSearchParams();
 
   const [siteName, setSiteName] = useState('');
@@ -188,14 +190,14 @@ function EditorInner() {
   });
 
   const TABS = [
-    {id:'profile',icon:User,    label:'Perfil'},
-    {id:'theme',  icon:Palette, label:'Tema'},
-    {id:'links',  icon:Link2,   label:'Links'},
-    {id:'videos', icon:Video,   label:'Vídeos'},
+    {id:'profile',icon:User,    label:t.profile||'Perfil'},
+    {id:'theme',  icon:Palette, label:t.theme||'Tema'},
+    {id:'links',  icon:Link2,   label:t.links||'Links'},
+    {id:'videos', icon:Video,   label:t.videos||'Vídeos'},
     {id:'cv',     icon:FileText,label:'CV'},
-    {id:'feed',   icon:Hash,    label:'Feed'},
-    {id:'pages',  icon:Img,     label:'Páginas'},
-    {id:'verify', icon:Shield,  label:'Verificar'},
+    {id:'feed',   icon:Hash,    label:t.feed||'Feed'},
+    {id:'pages',  icon:Img,     label:t.pages||'Páginas'},
+    {id:'verify', icon:Shield,  label:t.verify||'Verificar'},
   ];
 
   return (
@@ -225,10 +227,10 @@ function EditorInner() {
           )}
           <button onClick={handleSave} disabled={saving} style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 14px', borderRadius:8, border:'none', background:savedOk?'rgba(74,222,128,0.15)':accent, color:savedOk?'#4ade80':'#fff', cursor:'pointer', fontSize:12, fontWeight:700 }}>
             {saving?<Loader2 size={13} className="animate-spin"/>:savedOk?<Check size={13}/>:<Save size={13}/>}
-            {saving?'Salvando…':savedOk?'Salvo!':'Salvar'}
+            {saving?t.saving||'Salvando…':savedOk?t.save||'Salvo!':t.save||'Salvar'}
           </button>
           <button onClick={async()=>{ setPub(true); await save({published:true} as any); }} style={{ padding:'6px 14px', borderRadius:8, border:'none', cursor:'pointer', background:published?'rgba(74,222,128,0.12)':'linear-gradient(135deg,#f59e0b,#d97706)', color:published?'#4ade80':'#fff', fontSize:12, fontWeight:800 }}>
-            {published?'✓ Publicado':'Publicar'}
+            {published?`✓ ${t.live||'Publicado'}`:t.publish||'Publicar'}
           </button>
         </div>
       </div>
