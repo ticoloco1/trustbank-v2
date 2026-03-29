@@ -126,7 +126,7 @@ export function useFeedPosts(siteId: string | undefined) {
   useEffect(() => {
     if (!siteId) return;
     supabase.from('feed_posts')
-      .select('*').eq('profile_id', siteId)
+      .select('*').eq('site_id', siteId)
       .gte('expires_at', new Date().toISOString())
       .order('created_at', { ascending:false })
       .then(({ data }) => setPosts(data||[]));
@@ -137,7 +137,7 @@ export function useFeedPosts(siteId: string | undefined) {
       ? new Date(Date.now() + 365*864e5).toISOString()
       : new Date(Date.now() + 7*864e5).toISOString();
     const { data } = await supabase.from('feed_posts')
-      .insert({ ...post, profile_id:siteId, expires_at }).select().single();
+      .insert({ ...post, site_id:siteId, expires_at }).select().single();
     if (data) setPosts(prev => [data, ...prev]);
     return data;
   };
