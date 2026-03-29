@@ -23,7 +23,7 @@ export function useProfile(user: User | null) {
       const slug = user.email?.split('@')[0]?.toLowerCase().replace(/[^a-z0-9]/g,'') || `user${Date.now()}`;
       const { data: newProfile } = await supabase
         .from('mini_sites')
-        .insert({ user_id:user.id, slug, site_name:user.user_metadata?.name||slug, platform:'jobinlink', published:false })
+        .insert({ user_id:user.id, slug, site_name:user.user_metadata?.name||slug, platform:'trustbank', published:false })
         .select().single();
       setProfile(newProfile);
     } else {

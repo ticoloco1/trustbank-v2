@@ -1,5 +1,7 @@
-import { MiniSiteClient } from '@/components/minisite/MiniSiteClient';
+import { MiniSitePage } from '@/components/minisite/MiniSitePage';
 
-export default function MiniSitePage({ params }: { params: { slug: string } }) {
-  return <MiniSiteClient slug={params.slug} />;
+export default function Page({ params }: { params: { slug: string } }) {
+  return <MiniSitePage slug={params.slug} />;
 }
+
+export const dynamic = 'force-dynamic';
